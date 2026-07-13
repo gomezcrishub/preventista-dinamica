@@ -56,6 +56,116 @@ const formatPrice = (val: string | number | undefined | null): string => {
   return num.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 };
 
+// URL for direct Google Sheets CSV fetching
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1UVKTNUQuq9JEQr4k6_jJFmzFxpnct14xpR-bxfbBJsA/gviz/tq?tqx=out:csv&sheet=GolosinasMayorista";
+
+// Helper to parse a single line of CSV
+const parseCSVLineClient = (line: string): string[] => {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result.map(s => s.trim());
+};
+
+// Number parsing adjusted for Argentinian currency values
+const parseNumberSpanishClient = (val: string | undefined | null): number => {
+  if (!val) return 0;
+  let clean = val.trim();
+  clean = clean.replace('$', '').trim();
+  if (clean.includes(',')) {
+    clean = clean.replace(/\./g, '');
+    clean = clean.replace(',', '.');
+  } else {
+    clean = clean.replace(/\./g, '');
+  }
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+};
+
+// Parse Google Sheet CSV data
+const parseCSVDataClient = (csvText: string): Product[] => {
+  const lines = csvText.split(/\r?\n/);
+  if (lines.length === 0) return [];
+
+  const parsedProducts: Product[] = [];
+  let headerSkipped = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const columns = parseCSVLineClient(line);
+    
+    // Skip the first header row
+    if (!headerSkipped) {
+      if (columns[0] && columns[0].toLowerCase().includes('nombre')) {
+        headerSkipped = true;
+        continue;
+      }
+    }
+
+    const nombre = columns[0] || "";
+    const costo = columns[1] || "";
+    const unidad = columns[2] || "";
+    const mayor1 = columns[3] || "";
+    const mayor2 = columns[4] || "";
+    const bulto = columns[5] || "";
+    const cajaMayor1 = columns[6] || "";
+    const cajaMayor2 = columns[7] || "";
+
+    // Skip fully empty rows
+    if (!nombre && !costo && !unidad && !mayor1 && !mayor2 && !bulto && !cajaMayor1 && !cajaMayor2) {
+      continue;
+    }
+
+    const costoVal = parseNumberSpanishClient(costo);
+    const unidadVal = parseNumberSpanishClient(unidad);
+    const mayor1Val = parseNumberSpanishClient(mayor1);
+    const mayor2Val = parseNumberSpanishClient(mayor2);
+    const bultoVal = parseNumberSpanishClient(bulto);
+    const cajaMayor1Val = parseNumberSpanishClient(cajaMayor1);
+    const cajaMayor2Val = parseNumberSpanishClient(cajaMayor2);
+
+    // Identify if it's a category header row
+    const isCategoryHeader = !!nombre && !costo && !cajaMayor1 && (unidadVal === 0) && (mayor1Val === 0) && (mayor2Val === 0);
+
+    parsedProducts.push({
+      id: `p-${i}-${nombre.replace(/[^a-z0-9]/gi, '-').toLowerCase()}`,
+      nombre,
+      costo: costo || "",
+      costoParsed: costoVal,
+      unidad: unidad || "",
+      unidadParsed: unidadVal,
+      mayor1: mayor1 || "",
+      mayor1Parsed: mayor1Val,
+      mayor2: mayor2 || "",
+      mayor2Parsed: mayor2Val,
+      bulto: bulto || "",
+      bultoParsed: bultoVal,
+      cajaMayor1: cajaMayor1 || "",
+      cajaMayor1Parsed: cajaMayor1Val,
+      cajaMayor2: cajaMayor2 || "",
+      cajaMayor2Parsed: cajaMayor2Val,
+      isCategoryHeader: isCategoryHeader
+    });
+  }
+
+  return parsedProducts;
+};
+
+
 export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -252,18 +362,39 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
+      // First, try fetching from Express API endpoint
       const res = await fetch("/api/products");
+      if (!res.ok) {
+        throw new Error(`Endpoint returned status ${res.status}`);
+      }
       const data = await res.json();
       if (data.products && Array.isArray(data.products)) {
         setProducts(data.products);
         setDataSource(data.source === "live_google_sheets" ? "Google Sheets (En Vivo)" : "Caché de Respaldo");
       } else {
-        throw new Error("Formato de datos no válido.");
+        throw new Error("Formato de datos de API no válido.");
       }
     } catch (err: any) {
-      console.error(err);
-      setError("No se pudo conectar con la base de datos de Google Sheets.");
-      setDataSource("Error de conexión");
+      console.warn("Express API failed, falling back to direct Google Sheet fetching:", err);
+      try {
+        // Fallback: Fetch CSV directly from Google Sheets
+        const directRes = await fetch(SHEET_CSV_URL);
+        if (!directRes.ok) {
+          throw new Error(`Direct Google Sheet returned status ${directRes.status}`);
+        }
+        const csvText = await directRes.text();
+        const parsedProducts = parseCSVDataClient(csvText);
+        if (parsedProducts && parsedProducts.length > 0) {
+          setProducts(parsedProducts);
+          setDataSource("Google Sheets (Conexión Directa)");
+        } else {
+          throw new Error("El archivo CSV analizado no contiene productos.");
+        }
+      } catch (directErr: any) {
+        console.error("Direct fetch failed too:", directErr);
+        setError("No se pudo conectar con la base de datos de Google Sheets (Directa o API).");
+        setDataSource("Error de conexión");
+      }
     } finally {
       setLoading(false);
     }
@@ -1684,67 +1815,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Google Drive setup dropdown panel */}
-                <div className="border border-[#dadce0] bg-slate-50 p-2.5 mt-0.5 flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-black text-[8px] text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                      <span>📸</span> Integración con Google Drive
-                    </span>
-                    <button 
-                      onClick={() => {
-                        const elem = document.getElementById('drive-config-panel');
-                        if (elem) {
-                          elem.classList.toggle('hidden');
-                        }
-                      }}
-                      className="text-[#1d8045] hover:text-[#186b3a] text-[8px] font-bold underline cursor-pointer"
-                    >
-                      Configurar Carpeta
-                    </button>
-                  </div>
 
-                  <div id="drive-config-panel" className="hidden flex flex-col gap-2 pt-2 border-t border-slate-200">
-                    <p className="text-[8px] text-slate-500 leading-relaxed font-medium">
-                      Para vincular tu carpeta de Google Drive compartida, publica un script simple en <strong>Google Apps Script</strong>:
-                    </p>
-                    
-                    <div className="bg-slate-900 text-slate-300 p-2 rounded-none font-mono text-[7px] max-h-[80px] overflow-auto select-all leading-normal whitespace-pre">
-{`function doGet() {
-  const folderId = "1_P0facGE4AORjGJ5lEMBJBc2uYwQal_J";
-  const folder = DriveApp.getFolderById(folderId);
-  const files = folder.getFiles();
-  const mapping = {};
-  while (files.hasNext()) {
-    const file = files.next();
-    const name = file.getName().replace(/\\.[^/.]+$/, "");
-    mapping[name] = file.getId();
-  }
-  return ContentService.createTextOutput(JSON.stringify(mapping))
-    .setMimeType(ContentService.MimeType.JSON);
-}`}
-                    </div>
-
-                    <div className="flex flex-col gap-1 mt-1">
-                      <span className="text-[8px] font-bold text-slate-600">Pega la URL de la Web App aquí:</span>
-                      <div className="flex gap-1.5">
-                        <input 
-                          type="text" 
-                          value={googleAppsScriptUrl}
-                          onChange={(e) => setGoogleAppsScriptUrl(e.target.value)}
-                          placeholder="https://script.google.com/macros/s/.../exec"
-                          className="flex-1 bg-white border border-[#dadce0] px-2 py-0.5 text-[9px] text-slate-800 font-mono outline-none focus:border-[#1d8045]"
-                        />
-                        <button
-                          onClick={() => fetchDriveImagesMapping()}
-                          disabled={isFetchingMapping || !googleAppsScriptUrl}
-                          className="bg-[#1d8045] hover:bg-[#186b3a] disabled:opacity-50 text-white font-bold text-[8px] px-3 py-1 cursor-pointer transition uppercase"
-                        >
-                          {isFetchingMapping ? "Sincronizando..." : "Sincronizar"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
               </div>
 

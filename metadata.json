@@ -1,6 +1,6 @@
 {
-  "name": "Pedidos Golosinas Mayorista",
-  "description": "Aplicación de toma de pedidos con catálogo estilo Google Sheets y carrito de compras, integrado con WhatsApp.",
+  "name": "Preventa Dinamica",
+  "description": "Aplicación de toma de pedidos y catálogo integrado con Google Sheets y WhatsApp para preventistas.",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
