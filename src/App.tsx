@@ -24,7 +24,8 @@ import {
   History,
   FileText,
   Save,
-  Users
+  Users,
+  Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -237,6 +238,8 @@ export default function App() {
     const saved = localStorage.getItem("wholesaler_saved_orders");
     return saved ? JSON.parse(saved) : [];
   });
+
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
   const savedOrdersTotal = useMemo(() => {
     return savedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -491,11 +494,7 @@ export default function App() {
   const generateOrderText = () => {
     let text = `• *Nombre:* ${client.nombre.trim()}\n`;
     text += `• ${client.direccion.trim()}\n`;
-    text += `• ${client.telefono.trim()}\n`;
-    if (client.ubicacion?.trim()) {
-      text += `• ${client.ubicacion.trim()}\n`;
-    }
-    text += `==================\n\n`;
+    text += `• ${client.telefono.trim()}\n\n`;
 
     cart.forEach((item, index) => {
       const subtotal = item.price * item.quantity;
@@ -505,6 +504,12 @@ export default function App() {
 
     text = text.trimEnd();
     text += `\n\n\n*💰 TOTAL DEL PEDIDO: $${cartTotal.toLocaleString('es-AR')}*`;
+
+    if (client.ubicacion?.trim()) {
+      text += `\n• ${client.ubicacion.trim()}`;
+    }
+
+    text += `\n==================`;
     return text;
   };
 
@@ -624,6 +629,60 @@ export default function App() {
     });
   };
 
+  // Copiar todas las ventas seleccionadas en un solo mensaje
+  const handleCopySelectedOrders = () => {
+    const selected = savedOrders.filter(o => selectedOrderIds.includes(o.id));
+    if (selected.length === 0) {
+      showAlert("Sin selección", "Por favor, selecciona al menos una venta para copiar.");
+      return;
+    }
+    
+    const mergedText = selected.map(o => o.text).join("\n\n");
+    
+    navigator.clipboard.writeText(mergedText).then(() => {
+      setAddedAnimation({
+        id: "bulkcopy-" + Math.random(),
+        text: `📋 ¡${selected.length} ${selected.length === 1 ? 'venta copiada' : 'ventas copiadas'} en un solo mensaje!`
+      });
+      setTimeout(() => setAddedAnimation(null), 2500);
+    }).catch(err => {
+      console.error("No se pudo copiar el texto: ", err);
+      showAlert("Error de copia", "No se pudo copiar las ventas automáticamente.");
+    });
+  };
+
+  // Compartir/copiar todos los clientes guardados
+  const handleShareClients = () => {
+    if (savedClients.length === 0) {
+      showAlert("Sin clientes", "No hay clientes guardados para compartir.");
+      return;
+    }
+
+    let text = "📋 *LISTA DE CLIENTES GUARDADOS*\n\n";
+    savedClients.forEach((c, index) => {
+      text += `${index + 1}. *Nombre:* ${c.nombre.trim()}\n`;
+      text += `• *Dirección:* ${c.direccion.trim()}\n`;
+      text += `• *Teléfono:* ${c.telefono.trim()}\n`;
+      if (c.ubicacion && c.ubicacion.trim()) {
+        text += `• *Ubicación:* ${c.ubicacion.trim()}\n`;
+      }
+      text += "\n";
+    });
+
+    text = text.trimEnd();
+
+    navigator.clipboard.writeText(text).then(() => {
+      setAddedAnimation({
+        id: "shareclients-" + Math.random(),
+        text: `📋 ¡${savedClients.length} ${savedClients.length === 1 ? 'cliente copiado' : 'clientes copiados'} al portapapeles!`
+      });
+      setTimeout(() => setAddedAnimation(null), 2500);
+    }).catch(err => {
+      console.error("No se pudo copiar el texto: ", err);
+      showAlert("Error de copia", "No se pudo copiar los clientes automáticamente.");
+    });
+  };
+
   // Cargar pedido guardado en el carrito activo
   const loadOrderIntoCart = (order: SavedOrder) => {
     setCart(order.items);
@@ -646,6 +705,7 @@ export default function App() {
       "¿Estás seguro de que deseas eliminar este pedido del historial?",
       () => {
         setSavedOrders(prev => prev.filter(o => o.id !== orderId));
+        setSelectedOrderIds(prev => prev.filter(id => id !== orderId));
       }
     );
   };
@@ -657,6 +717,7 @@ export default function App() {
       "¿Estás seguro de que deseas eliminar TODOS los pedidos del historial?",
       () => {
         setSavedOrders([]);
+        setSelectedOrderIds([]);
       }
     );
   };
@@ -680,9 +741,9 @@ export default function App() {
       {/* BENTO THEMED GOOGLE SHEETS HEADER BAR - REDUCED 80% */}
       <header className="flex-none bg-white border-b border-[#dadce0] flex flex-wrap items-center justify-between px-4 py-2 gap-2 shadow-sm z-20">
         <div className="flex items-center gap-3">
-          <div className="bg-[#1d8045] p-2 rounded-none shadow-sm hover:scale-105 transition-transform shrink-0">
-            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
+          <div className="bg-[#dc2626] p-2 rounded-none shadow-sm hover:scale-105 transition-transform shrink-0 flex items-center justify-center">
+            <svg className="w-4 h-4" viewBox="0 0 512 512">
+              <text x="50%" y="54%" dominantBaseline="central" textAnchor="middle" fontFamily="system-ui, sans-serif" fontWeight="900" fontSize="320" fill="#ffffff">D</text>
             </svg>
           </div>
           <div>
@@ -1015,12 +1076,27 @@ export default function App() {
                 <span className="w-2 h-2 bg-[#1d8045] rounded-none"></span>
                 <span className="text-slate-800 font-bold font-mono">Historial de Ventas</span>
                 {savedOrders.length > 0 && (
-                  <span className="text-[10px] text-slate-500 font-mono font-medium flex items-center gap-1">
-                    <span>•</span>
-                    <span>Monto Total:</span>
-                    <span className="text-[#1d8045] font-black">${savedOrdersTotal.toLocaleString('es-AR')}</span>
-                    <span className="text-slate-400">({savedOrders.length} {savedOrders.length === 1 ? 'venta' : 'ventas'})</span>
-                  </span>
+                  <>
+                    <button
+                      onClick={() => {
+                        const allSelected = selectedOrderIds.length === savedOrders.length;
+                        if (allSelected) {
+                          setSelectedOrderIds([]);
+                        } else {
+                          setSelectedOrderIds(savedOrders.map(o => o.id));
+                        }
+                      }}
+                      className="text-[9px] text-[#1967d2] hover:text-[#114b9e] font-extrabold uppercase tracking-wider cursor-pointer bg-slate-200/50 hover:bg-slate-200 px-1.5 py-0.5 rounded-none border border-transparent transition"
+                    >
+                      {selectedOrderIds.length === savedOrders.length ? "✕ Deseleccionar" : "✓ Seleccionar Todo"}
+                    </button>
+                    <span className="text-[10px] text-slate-500 font-mono font-medium flex items-center gap-1">
+                      <span>•</span>
+                      <span>Monto Total:</span>
+                      <span className="text-[#1d8045] font-black">${savedOrdersTotal.toLocaleString('es-AR')}</span>
+                      <span className="text-slate-400">({savedOrders.length} {savedOrders.length === 1 ? 'venta' : 'ventas'})</span>
+                    </span>
+                  </>
                 )}
               </div>
               {savedOrders.length > 0 && (
@@ -1060,6 +1136,21 @@ export default function App() {
                           className="bg-white p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none border-b border-[#dadce0]/60 hover:bg-slate-50 transition-colors"
                         >
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedOrderIds.includes(order.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                const isChecked = e.target.checked;
+                                setSelectedOrderIds(prev => 
+                                  isChecked 
+                                    ? [...prev, order.id]
+                                    : prev.filter(id => id !== order.id)
+                                );
+                              }}
+                              className="w-4 h-4 text-[#1d8045] border-slate-300 rounded-none focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#1d8045] shrink-0"
+                              title="Seleccionar venta"
+                            />
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1205,6 +1296,33 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            {savedOrders.length > 0 && (
+              <div className="bg-slate-50 border-t border-[#dadce0] p-3 flex flex-wrap items-center justify-between gap-2.5 shrink-0 z-10">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] text-slate-500 font-bold">
+                    Seleccionados: <span className="text-[#1d8045] font-black">{selectedOrderIds.length}</span> / {savedOrders.length}
+                  </span>
+                  {selectedOrderIds.length > 0 && (
+                    <button
+                      onClick={() => setSelectedOrderIds([])}
+                      className="text-[9px] text-slate-500 hover:text-slate-800 font-bold underline cursor-pointer bg-transparent border-0"
+                    >
+                      Desmarcar todos
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={handleCopySelectedOrders}
+                  disabled={selectedOrderIds.length === 0}
+                  className="bg-[#1d8045] hover:bg-[#186b3a] disabled:opacity-40 disabled:hover:bg-[#1d8045] text-white border border-transparent font-extrabold text-[10px] py-1.5 px-3.5 rounded-none transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  title="Copiar todas las ventas seleccionadas en un solo mensaje"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copiar Seleccionadas ({selectedOrderIds.length})</span>
+                </button>
+              </div>
+            )}
           </section>
         )}
 
@@ -1647,7 +1765,19 @@ export default function App() {
               </div>
 
               {/* Footer */}
-              <div className="bg-[#f8f9fa] border-t border-[#dadce0] px-4 py-2.5 flex justify-end">
+              <div className="bg-[#f8f9fa] border-t border-[#dadce0] px-4 py-2.5 flex justify-between items-center gap-2">
+                {savedClients.length > 0 ? (
+                  <button
+                    onClick={handleShareClients}
+                    className="bg-[#1d8045] hover:bg-[#186b3a] text-white border border-transparent px-3.5 py-1.5 rounded-none font-black text-[10px] uppercase tracking-wider cursor-pointer transition active:scale-95 flex items-center gap-1.5"
+                    title="Copiar lista de clientes guardados"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Compartir Clientes</span>
+                  </button>
+                ) : (
+                  <div></div>
+                )}
                 <button
                   onClick={() => setIsClientsModalOpen(false)}
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-[#dadce0] px-3.5 py-1.5 rounded-none font-black text-[10px] uppercase tracking-wider cursor-pointer transition"
