@@ -493,10 +493,9 @@ export default function App() {
     text += `• ${client.direccion.trim()}\n`;
     text += `• ${client.telefono.trim()}\n`;
     if (client.ubicacion?.trim()) {
-      text += `${client.ubicacion.trim()}\n`;
+      text += `• ${client.ubicacion.trim()}\n`;
     }
-    text += `==================================\n`;
-    text += `*🛒 DETALLE DEL PEDIDO:*\n\n`;
+    text += `==================\n\n`;
 
     cart.forEach((item, index) => {
       const subtotal = item.price * item.quantity;
@@ -504,9 +503,8 @@ export default function App() {
       text += `   (${item.quantity} x $${item.price.toLocaleString('es-AR')}) *$${subtotal.toLocaleString('es-AR')}*\n\n`;
     });
 
-    text += `==================================\n`;
-    text += `*💰 TOTAL DEL PEDIDO: $${cartTotal.toLocaleString('es-AR')}*\n`;
-    text += `==================================`;
+    text = text.trimEnd();
+    text += `\n\n\n*💰 TOTAL DEL PEDIDO: $${cartTotal.toLocaleString('es-AR')}*`;
     return text;
   };
 
@@ -689,7 +687,7 @@ export default function App() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold text-[#202124] tracking-tight">GolosinasMayorista</h1>
+              <h1 className="text-sm font-bold text-[#202124] tracking-tight">Preventa Dinamica</h1>
             </div>
             <p className="text-[10px] text-gray-400 font-medium leading-none">Haga clic en Unidad o Caja para agregar al pedido</p>
           </div>
@@ -810,7 +808,7 @@ export default function App() {
         
         {activeTab === "planilla" ? (
           /* LEFT COMPONENT: GOOGLE SPREADSHEET */
-          <section className="flex-1 bg-white rounded-none border border-[#dadce0] shadow-sm flex flex-col overflow-hidden">
+          <section className="flex-1 flex flex-col overflow-hidden">
           
 
 
@@ -1290,8 +1288,8 @@ export default function App() {
                           </div>
 
                           <div className="text-right leading-none">
-                            <p className="text-[8px] text-gray-400 font-mono">Unit: ${item.price.toLocaleString('es-AR')}</p>
-                            <p className="font-mono text-[10px] font-extrabold text-[#1d8045]">${subtotal.toLocaleString('es-AR')}</p>
+                            <p className="text-[14px] text-gray-400 font-mono">Unit: ${item.price.toLocaleString('es-AR')}</p>
+                            <p className="font-mono text-[20px] font-extrabold text-[#1d8045]">${subtotal.toLocaleString('es-AR')}</p>
                           </div>
                         </div>
                       </motion.div>
@@ -1325,10 +1323,10 @@ export default function App() {
         <footer className="flex-none bg-white border-t border-[#dadce0] p-4 grid grid-cols-1 lg:grid-cols-4 gap-4 z-10 text-[10px]">
         
         {/* Customer Bento Card (strictly square edges, 4 columns) */}
-        <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-4 gap-4 bg-[#f8f9fa] p-3 rounded-none border border-[#dadce0] shadow-inner">
+        <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-4 gap-4 bg-[#202124] p-3 rounded-none border border-[#3c4043] shadow-inner">
           
           <div className="flex flex-col gap-1">
-            <label className="text-[9px] font-extrabold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+            <label className="text-[9px] font-extrabold text-white uppercase tracking-widest flex items-center gap-1">
               <User className="w-3 h-3 text-[#1d8045]" />
               Nombre del Cliente *
             </label>
@@ -1345,7 +1343,7 @@ export default function App() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[9px] font-extrabold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+            <label className="text-[9px] font-extrabold text-white uppercase tracking-widest flex items-center gap-1">
               <MapPin className="w-3 h-3 text-[#1d8045]" />
               Dirección de Entrega *
             </label>
@@ -1362,7 +1360,7 @@ export default function App() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[9px] font-extrabold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+            <label className="text-[9px] font-extrabold text-white uppercase tracking-widest flex items-center gap-1">
               <Phone className="w-3 h-3 text-[#1d8045]" />
               Teléfono de Contacto *
             </label>
@@ -1379,7 +1377,7 @@ export default function App() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[9px] font-extrabold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+            <label className="text-[9px] font-extrabold text-white uppercase tracking-widest flex items-center gap-1">
               <Navigation className="w-3 h-3 text-[#1d8045]" />
               Ubicación (Enlace/GPS)
             </label>
