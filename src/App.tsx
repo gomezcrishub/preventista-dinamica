@@ -498,7 +498,8 @@ export default function App() {
 
     cart.forEach((item, index) => {
       const subtotal = item.price * item.quantity;
-      text += `${index + 1}. ${item.product.nombre}\n`;
+      const prefix = item.presentation === 'unidad' ? 'UNIDAD ' : '';
+      text += `${index + 1}. ${prefix}${item.product.nombre}\n`;
       text += `   (${item.quantity} x $${item.price.toLocaleString('es-AR')}) *$${subtotal.toLocaleString('es-AR')}*\n\n`;
     });
 
