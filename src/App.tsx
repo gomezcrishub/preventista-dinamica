@@ -637,7 +637,7 @@ export default function App() {
       return;
     }
     
-    const mergedText = selected.map(o => o.text).join("\n\n");
+    const mergedText = selected.map(o => o.text).join("\n\n\n");
     
     navigator.clipboard.writeText(mergedText).then(() => {
       setAddedAnimation({
